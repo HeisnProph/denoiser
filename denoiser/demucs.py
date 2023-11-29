@@ -1,9 +1,8 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 #
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-# author: adefossez
+# author: Jingxiang Zhou, Xiaosha Li
 
 import math
 import time
@@ -30,6 +29,29 @@ class BLSTM(nn.Module):
         if self.linear:
             x = self.linear(x)
         return x, hidden
+
+
+#########################################################
+############# transformer model
+class TransformerModel(nn.Module):
+    def __init__(self, input_size, output_size, hidden_size, num_layers):
+        super(TransformerModel, self).__init__()
+        self.transformer = nn.Transformer(
+            d_model=input_size,
+            nhead=4,  # 调整 nhead 的值
+            num_encoder_layers=num_layers,
+            num_decoder_layers=num_layers,
+            dim_feedforward=hidden_size,
+            output_dim=output_size
+        )
+
+    def forward(self, x):
+        return self.transformer(x)
+################ end
+##################################################################
+
+
+
 
 
 def rescale_conv(conv, reference):
