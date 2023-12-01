@@ -16,49 +16,54 @@ from denoiser.executor import start_ddp_workers
 logger = logging.getLogger(__name__)
 
 
-def run(args):
-    import torch
+def run(args):  # 参数为args
+    import torch 
 
-    from denoiser import distrib
-    from denoiser.data import NoisyCleanSet
+    from denoiser import distrib  # 分GPU训练-DDP
+    from denoiser.data import NoisyCleanSet  
     from denoiser.demucs import Demucs
     from denoiser.solver import Solver
-    distrib.init(args)
+    distrib.init(args)   # 参数args是在distrib里面被定义的
 
     # torch also initialize cuda seed if available
-    torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed)  # 看要不要用Cuda吧
 
-    model = Demucs(**args.demucs, sample_rate=args.sample_rate)
+    model = Demucs(**args.demucs, sample_rate=args.sample_rate)  # 创建Demucs模型实例，并使用args参数初始化模型
+    # 开始调用的同时，就开始RUN了，所以这一步是在RUN，之后的是模型使用条件
 
-    if args.show:
-        logger.info(model)
+    if args.show: # 这个args.show是出现在什么地方的？？？？？
+        logger.info(model) 
         mb = sum(p.numel() for p in model.parameters()) * 4 / 2**20
         logger.info('Size: %.1f MB', mb)
         if hasattr(model, 'valid_length'):
-            field = model.valid_length(1)
+            field = model.valid_length(1)   # 如果模型有valid——length方法，计算模型有效长度
             logger.info('Field: %.1f ms', field / args.sample_rate * 1000)
         return
 
-    assert args.batch_size % distrib.world_size == 0
+    assert args.batch_size % distrib.world_size == 0  # 确定参数的batch_size批量大小，是分布式环境distrib的整数倍
     args.batch_size //= distrib.world_size
 
-    length = int(args.segment * args.sample_rate)
-    stride = int(args.stride * args.sample_rate)
+    length = int(args.segment * args.sample_rate)  # 计算一个音频的长度，对于Transformer来说很重要！！！
+    stride = int(args.stride * args.sample_rate)  # 计算音频片段之间的跨度
+    
     # Demucs requires a specific number of samples to avoid 0 padding during training
-    if hasattr(model, 'valid_length'):
-        length = model.valid_length(length)
+    if hasattr(model, 'valid_length'): # 检查模型是否有valid_length
+        length = model.valid_length(length)  # 如果有valid_length,根据模型的有效长度valid_length调整音频片段的长度，
+                                             # transformer同样需要！！！
     kwargs = {"matching": args.dset.matching, "sample_rate": args.sample_rate}
-    # Building datasets and loaders
+
+    ########################################################################################################
+    # Building datasets and loaders 从Data里面给定数据集来训练。接口1 ！！！
     tr_dataset = NoisyCleanSet(
         args.dset.train, length=length, stride=stride, pad=args.pad, **kwargs)
     tr_loader = distrib.loader(
         tr_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    if args.dset.valid:
+    if args.dset.valid:    # 验证集
         cv_dataset = NoisyCleanSet(args.dset.valid, **kwargs)
         cv_loader = distrib.loader(cv_dataset, batch_size=1, num_workers=args.num_workers)
     else:
         cv_loader = None
-    if args.dset.test:
+    if args.dset.test:     # 测试集
         tt_dataset = NoisyCleanSet(args.dset.test, **kwargs)
         tt_loader = distrib.loader(tt_dataset, batch_size=1, num_workers=args.num_workers)
     else:
@@ -66,10 +71,10 @@ def run(args):
     data = {"tr_loader": tr_loader, "cv_loader": cv_loader, "tt_loader": tt_loader}
 
     if torch.cuda.is_available():
-        model.cuda()
+        model.cuda()      # 如果cuda可用
 
     # optimizer
-    if args.optim == "adam":
+    if args.optim == "adam":   # 选择参数优化器？ ？？ 这个通过什么方式
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, args.beta2))
     else:
         logger.fatal('Invalid optimizer %s', args.optim)
