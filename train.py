@@ -53,17 +53,17 @@ def run(args):  # 参数为args
     kwargs = {"matching": args.dset.matching, "sample_rate": args.sample_rate}
 
     ########################################################################################################
-    # Building datasets and loaders
+    # Building datasets and loaders 从Data里面给定数据集来训练。接口1 ！！！
     tr_dataset = NoisyCleanSet(
         args.dset.train, length=length, stride=stride, pad=args.pad, **kwargs)
     tr_loader = distrib.loader(
         tr_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    if args.dset.valid:
+    if args.dset.valid:    # 验证集
         cv_dataset = NoisyCleanSet(args.dset.valid, **kwargs)
         cv_loader = distrib.loader(cv_dataset, batch_size=1, num_workers=args.num_workers)
     else:
         cv_loader = None
-    if args.dset.test:
+    if args.dset.test:     # 测试集
         tt_dataset = NoisyCleanSet(args.dset.test, **kwargs)
         tt_loader = distrib.loader(tt_dataset, batch_size=1, num_workers=args.num_workers)
     else:
@@ -71,10 +71,10 @@ def run(args):  # 参数为args
     data = {"tr_loader": tr_loader, "cv_loader": cv_loader, "tt_loader": tt_loader}
 
     if torch.cuda.is_available():
-        model.cuda()
+        model.cuda()      # 如果cuda可用
 
     # optimizer
-    if args.optim == "adam":
+    if args.optim == "adam":   # 选择参数优化器？ ？？ 这个通过什么方式
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, args.beta2))
     else:
         logger.fatal('Invalid optimizer %s', args.optim)
