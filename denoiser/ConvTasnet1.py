@@ -1,10 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import librosa
 
 class ConvTasNet(nn.Module):
-    def __init__(self, N, L, B, H, P, X, R):
+    def __init__(self, N, L, B, H, P, X, R, frame_length, frame_step):
         super(ConvTasNet, self).__init__()
+        
+        self.frame_length = frame_length
+        self.frame_step = frame_step
+        
         # Encoder
         self.encoder = nn.Conv1d(1, N, kernel_size=L, stride=L//2)
         
@@ -15,10 +20,14 @@ class ConvTasNet(nn.Module):
         self.decoder = nn.ConvTranspose1d(N, 1, kernel_size=L, stride=L//2)
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.separator(x)
-        x = self.decoder(x)
-        return x
+        frames = librosa.effects.frame(x, frame_length=self.frame_length, hop_length=self.frame_step)
+        frames = torch.from_numpy(frames).float()
+
+        encoded_frames = self.encoder(frames)
+        separated_frames = self.separator(encoded_frames)
+        reconstructed_frames = self.decoder(separated_frames)
+        
+        return reconstructed_frames
 
 class TemporalConvNet(nn.Module):
     def __init__(self, N, B, H, P, X, R):
