@@ -4,7 +4,23 @@ import torch.nn.functional as F
 import librosa
 
 class ConvTasNet(nn.Module):
-    def __init__(self, N, L, B, H, P, X, R, frame_length, frame_step):
+    def __init__(self,
+                 sources,
+                 N=256,
+                 L=20,
+                 B=256,
+                 H=512,
+                 P=3,
+                 X=8,
+                 R=4,
+                 audio_channels=2,
+                 norm_type="gLN",
+                 causal=False,
+                 mask_nonlinear='relu',
+                 samplerate=44100,
+                 segment_length=44100 * 2 * 4,
+                 frame_length=400,
+                 frame_step=100):
         super(ConvTasNet, self).__init__()
         
         self.frame_length = frame_length
@@ -30,19 +46,22 @@ class ConvTasNet(nn.Module):
         return reconstructed_frames
 
 class TemporalConvNet(nn.Module):
-    def __init__(self, N, B, H, P, X, R):
+    def __init__(self, N, B, H, P, X, R, kernel_size=None, dilation=1):
+        if kernel_size==None:
+            kernel_size=3
+            
         super(TemporalConvNet, self).__init__()
         layers = []
         for _ in range(B):
             dilation = 2 ** _ if _ < R else 2 ** ((_ - R) % X)
-            layers += [TemporalBlock(N, H, P, kernel_size=3, dilation=dilation)]
+            layers += [TemporalBlock(N, H, P, kernel_size, dilation)]
         self.network = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.network(x)
 
 class TemporalBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, dilation, padding, dropout=0.2):
+    def __init__(self, in_channels, out_channels, kernel_size=3, dilation=1, padding=0, dropout=0.2):
         super(TemporalBlock, self).__init__()
         self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size,
                                padding=dilation, dilation=dilation)
