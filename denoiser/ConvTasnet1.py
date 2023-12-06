@@ -36,10 +36,10 @@ class ConvTasNet(nn.Module):
         self.decoder = nn.ConvTranspose1d(N, 1, kernel_size=L, stride=L//2)
 
     def forward(self, x):
-        frames = librosa.effects.frame(x, frame_length=self.frame_length, hop_length=self.frame_step)
+        frames = librosa.util.frame(x.cpu().numpy(), frame_length=self.frame_length, hop_length=self.frame_step)
         frames = torch.from_numpy(frames).float()
 
-        encoded_frames = self.encoder(frames)
+        encoded_frames = self.encoder(frames.view(27, 1, -1))
         separated_frames = self.separator(encoded_frames)
         reconstructed_frames = self.decoder(separated_frames)
         

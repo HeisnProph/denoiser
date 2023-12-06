@@ -108,6 +108,7 @@ hydra:
           'num_prints', 'continue_from', 'save_again',
           'device', 'num_workers', 'print_freq', 'restart', 'verbose',
           'log', 'ddp', 'ddp_backend', 'rendezvous_file', 'rank', 'world_size']
+
   job_logging:
     handlers:
       file:

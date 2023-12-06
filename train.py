@@ -117,7 +117,7 @@ def _main(args):
 
 
 
-@hydra.main(version_base=None,config_path="./conf",config_name="config")
+@hydra.main(version_base=None,config_path="conf",config_name="config")
 def main(args):
     try:
         _main(args)
